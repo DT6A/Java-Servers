@@ -12,9 +12,11 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+
+import static java.lang.Math.min;
 
 public class NonBlockingServer extends AbstractServer {
     private volatile boolean isWorking = true;
@@ -25,8 +27,8 @@ public class NonBlockingServer extends AbstractServer {
     private final ExecutorService writePool = Executors.newSingleThreadExecutor();
 
     private final Queue<ClientHandler> readQueue = new ConcurrentLinkedQueue<>();
-    private final Queue<ClientHandler> writeQueue = new ConcurrentLinkedQueue<>();
-    private final List<ClientHandler> clients = new ArrayList<>();
+    private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    private final List<Integer> sentMsgs = new CopyOnWriteArrayList<>();
 
     private final TestConfig config;
     private final TimeCollector collector;
@@ -72,21 +74,23 @@ public class NonBlockingServer extends AbstractServer {
                            handler.fillMessage();
 
                            if (handler.isMessageCollected()) {
+                               //Client . finished
                                //System.out.println("Collected message");
+                               List<Integer> receivedData = handler.getMessage().getArrayList();
+                               //System.out.println("Collected message " + handler.userId);
                                workers.submit(() -> {
-                                   try {
-                                       long start = System.currentTimeMillis();
-                                       handler.result = processData(handler.getMessage().getArrayList());
-                                       long end = System.currentTimeMillis();
-                                       collector.putFromServer(end - start);
-                                       handler.makeWriteBuffer();
-                                       handler.resetRead();
-                                       writeQueue.offer(handler);
-                                       writeSelector.wakeup();
-                                   } catch (InvalidProtocolBufferException e) {
-                                       e.printStackTrace();
-                                   }
+                                   long start = System.currentTimeMillis();
+                                   List<Integer> result = processData(receivedData);
+                                   long end = System.currentTimeMillis();
+                                   collector.putFromServer(end - start);
+                                   Message response = Message.newBuilder()
+                                           .setTaskId(handler.taskId).setClientId(handler.userId).addAllArray(result).build();
+                                   handler.messages.offer(response);
+                                   //handler.makeWriteBuffer();
+                                   //writeQueue.offer(handler);
+                                   writeSelector.wakeup();
                                });
+                               handler.resetRead();
                            }
 
                            iterator.remove();
@@ -100,13 +104,19 @@ public class NonBlockingServer extends AbstractServer {
             writePool.submit(() -> {
                 while (isWorking) {
                     try {
-                        while (!writeQueue.isEmpty()) {
-                            ClientHandler handler = writeQueue.poll();
-                            if (handler == null) {
-                                break;
+                        for (int i = 0; i < clients.size(); i++) {
+                            ClientHandler handler = clients.get(i);
+                            if ((!handler.everStarted || !handler.writeBuffer.hasRemaining()) && !handler.messages.isEmpty()) {
+                                handler.everStarted = true;
+                                handler.resetWrite();
+                                Message message = handler.messages.poll();
+                                handler.makeWriteBuffer(message);
+                                //System.out.println("Registering");
+                                handler.channel.register(writeSelector, SelectionKey.OP_WRITE, handler);
+                                //System.out.println("Registered");
                             }
-                            handler.channel.register(writeSelector, SelectionKey.OP_WRITE, handler);
                         }
+                        //System.out.println(sentMsgs);
                         if (writeSelector.select(1000) == 0) {
                             continue;
                         }
@@ -117,9 +127,15 @@ public class NonBlockingServer extends AbstractServer {
                             ClientHandler handler = (ClientHandler)selectionKey.attachment();
 
                             handler.channel.write(handler.writeBuffer);
+                            //System.out.println("Writting data " + handler.userId);
                             if (!handler.writeBuffer.hasRemaining()) {
-                                selectionKey.cancel();
-                                handler.resetWrite();
+                                sentMsgs.set(handler.userId, sentMsgs.get(handler.userId) + 1);
+                                //System.out.println("Canceling " + handler.userId);
+                                selectionKey.interestOps(0);
+                                //selectionKey.cancel();
+                                //System.out.println("Canceled " + handler.userId);
+                                //handler.resetWrite();
+                                //System.out.println("Wrote " + handler.userId);
                             }
 
                             iterator.remove();
@@ -137,7 +153,8 @@ public class NonBlockingServer extends AbstractServer {
                 } catch (ClosedByInterruptException ignore) {
                     break;
                 }
-                System.out.println("Accepted client");
+                //System.out.println("Accepted client");
+                sentMsgs.add(0);
                 channel.configureBlocking(false);
                 ClientHandler handler = new ClientHandler(channel);
                 clients.add(handler);
@@ -161,6 +178,8 @@ public class NonBlockingServer extends AbstractServer {
     }
 
     private static class ClientHandler {
+        private volatile boolean everStarted = false;
+        private final Queue<Message> messages = new ConcurrentLinkedQueue<>();
         private int messageLen;
         private int numberOfTasks;
         private int tasksCompleted;
@@ -169,6 +188,8 @@ public class NonBlockingServer extends AbstractServer {
         public ByteBuffer writeBuffer;
         public List<Integer> result;
         public final SocketChannel channel;
+        private volatile int userId;
+        private volatile int taskId;
 
         private ClientHandler(SocketChannel channel) {
             this.channel = channel;
@@ -195,8 +216,9 @@ public class NonBlockingServer extends AbstractServer {
                 }
             }
             int readyToRead = readBuffer.remaining();
-            byte[] tmp = new byte[readyToRead];
-            readBuffer.get(tmp);
+            int willRead = min(readyToRead, messageLen - message.length);
+            byte[] tmp = new byte[willRead];
+            readBuffer.get(tmp, 0, willRead);
             message = ArrayUtils.addAll(message, tmp);
             readBuffer.compact();
         }
@@ -209,11 +231,14 @@ public class NonBlockingServer extends AbstractServer {
             if (!isMessageCollected()) {
                 return null;
             }
-            return Message.parseFrom(message);
+            Message msg = Message.parseFrom(message);
+            userId = msg.getClientId();
+            taskId = msg.getTaskId();
+            return msg;
         }
 
-        public void makeWriteBuffer() {
-            byte[] response = Message.newBuilder().setLen(result.size()).addAllArray(result).build().toByteArray();
+        public void makeWriteBuffer(Message msg) {
+            byte[] response = msg.toByteArray();
             writeBuffer = ByteBuffer.allocate(4 + response.length);
             writeBuffer.putInt(response.length);
             writeBuffer.put(response);

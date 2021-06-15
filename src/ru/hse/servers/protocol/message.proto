@@ -6,6 +6,7 @@ option java_multiple_files = true;
 option java_outer_classname = "MessageProtocol";
 
 message Message {
-    required int32 len = 1;
-    repeated int32 array = 2;
+    required int32 clientId = 1;
+    required int32 taskId = 2;
+    repeated int32 array = 3;
 }

@@ -8,6 +8,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
+import static java.lang.Math.min;
+
 public class Utils {
     public static void writeMessage(DataOutputStream outputStream, Message message) throws IOException {
         byte[] data = message.toByteArray();
@@ -25,7 +27,7 @@ public class Utils {
         byte[] data = new byte[0];
         byte[] buf = new byte[1024];
         while (len > 0) {
-            int read = inputStream.read(buf);
+            int read = inputStream.read(buf, 0, min(1024, len));
             if (read < 1024) {
                 buf = Arrays.copyOfRange(buf, 0, read);
             }

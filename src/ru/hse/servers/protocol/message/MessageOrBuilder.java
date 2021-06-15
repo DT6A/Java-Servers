@@ -8,28 +8,39 @@ public interface MessageOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>required int32 len = 1;</code>
-   * @return Whether the len field is set.
+   * <code>required int32 clientId = 1;</code>
+   * @return Whether the clientId field is set.
    */
-  boolean hasLen();
+  boolean hasClientId();
   /**
-   * <code>required int32 len = 1;</code>
-   * @return The len.
+   * <code>required int32 clientId = 1;</code>
+   * @return The clientId.
    */
-  int getLen();
+  int getClientId();
 
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>required int32 taskId = 2;</code>
+   * @return Whether the taskId field is set.
+   */
+  boolean hasTaskId();
+  /**
+   * <code>required int32 taskId = 2;</code>
+   * @return The taskId.
+   */
+  int getTaskId();
+
+  /**
+   * <code>repeated int32 array = 3;</code>
    * @return A list containing the array.
    */
   java.util.List<java.lang.Integer> getArrayList();
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>repeated int32 array = 3;</code>
    * @return The count of array.
    */
   int getArrayCount();
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>repeated int32 array = 3;</code>
    * @param index The index of the element to return.
    * @return The array at the given index.
    */

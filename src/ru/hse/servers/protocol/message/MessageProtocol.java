@@ -29,8 +29,9 @@ public final class MessageProtocol {
   static {
     java.lang.String[] descriptorData = {
       "\n\rmessage.proto\022\037ru.hse.servers.protocol" +
-      ".message\"%\n\007Message\022\013\n\003len\030\001 \002(\005\022\r\n\005arra" +
-      "y\030\002 \003(\005B\023B\017MessageProtocolP\001"
+      ".message\":\n\007Message\022\020\n\010clientId\030\001 \002(\005\022\016\n" +
+      "\006taskId\030\002 \002(\005\022\r\n\005array\030\003 \003(\005B\023B\017MessageP" +
+      "rotocolP\001"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -41,7 +42,7 @@ public final class MessageProtocol {
     internal_static_ru_hse_servers_protocol_message_Message_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_ru_hse_servers_protocol_message_Message_descriptor,
-        new java.lang.String[] { "Len", "Array", });
+        new java.lang.String[] { "ClientId", "TaskId", "Array", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

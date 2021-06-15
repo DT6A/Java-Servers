@@ -19,6 +19,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static java.lang.Math.min;
+
 public class AsynchronousServer extends AbstractServer {
     private final TestConfig config;
     private final TimeCollector collector;
@@ -65,6 +67,8 @@ public class AsynchronousServer extends AbstractServer {
         private int messageLen;
         private int numberOfTasks;
         private int tasksCompleted;
+        private int userId;
+        private int taskId;
         byte[] message = new byte[0];
         public ByteBuffer readBuffer = ByteBuffer.allocate(1024);
         public ByteBuffer writeBuffer;
@@ -98,8 +102,9 @@ public class AsynchronousServer extends AbstractServer {
                 }
             }
             int readyToRead = readBuffer.remaining();
-            byte[] tmp = new byte[readyToRead];
-            readBuffer.get(tmp);
+            int willRead = min(readyToRead, messageLen - message.length);
+            byte[] tmp = new byte[willRead];
+            readBuffer.get(tmp, 0, willRead);
             message = ArrayUtils.addAll(message, tmp);
             readBuffer.compact();
         }
@@ -112,11 +117,14 @@ public class AsynchronousServer extends AbstractServer {
             if (!isMessageCollected()) {
                 return null;
             }
-            return Message.parseFrom(message);
+            Message msg = Message.parseFrom(message);
+            userId = msg.getClientId();
+            taskId = msg.getTaskId();
+            return msg;
         }
 
         public void makeWriteBuffer() {
-            byte[] response = Message.newBuilder().setLen(result.size()).addAllArray(result).build().toByteArray();
+            byte[] response = Message.newBuilder().setTaskId(taskId).setClientId(userId).addAllArray(result).build().toByteArray();
             writeBuffer = ByteBuffer.allocate(4 + response.length);
             writeBuffer.putInt(response.length);
             writeBuffer.put(response);

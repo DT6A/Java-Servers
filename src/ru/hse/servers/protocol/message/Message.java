@@ -52,23 +52,28 @@ private static final long serialVersionUID = 0L;
             break;
           case 8: {
             bitField0_ |= 0x00000001;
-            len_ = input.readInt32();
+            clientId_ = input.readInt32();
             break;
           }
           case 16: {
-            if (!((mutable_bitField0_ & 0x00000002) != 0)) {
+            bitField0_ |= 0x00000002;
+            taskId_ = input.readInt32();
+            break;
+          }
+          case 24: {
+            if (!((mutable_bitField0_ & 0x00000004) != 0)) {
               array_ = newIntList();
-              mutable_bitField0_ |= 0x00000002;
+              mutable_bitField0_ |= 0x00000004;
             }
             array_.addInt(input.readInt32());
             break;
           }
-          case 18: {
+          case 26: {
             int length = input.readRawVarint32();
             int limit = input.pushLimit(length);
-            if (!((mutable_bitField0_ & 0x00000002) != 0) && input.getBytesUntilLimit() > 0) {
+            if (!((mutable_bitField0_ & 0x00000004) != 0) && input.getBytesUntilLimit() > 0) {
               array_ = newIntList();
-              mutable_bitField0_ |= 0x00000002;
+              mutable_bitField0_ |= 0x00000004;
             }
             while (input.getBytesUntilLimit() > 0) {
               array_.addInt(input.readInt32());
@@ -91,7 +96,7 @@ private static final long serialVersionUID = 0L;
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000002) != 0)) {
+      if (((mutable_bitField0_ & 0x00000004) != 0)) {
         array_.makeImmutable(); // C
       }
       this.unknownFields = unknownFields.build();
@@ -112,29 +117,48 @@ private static final long serialVersionUID = 0L;
   }
 
   private int bitField0_;
-  public static final int LEN_FIELD_NUMBER = 1;
-  private int len_;
+  public static final int CLIENTID_FIELD_NUMBER = 1;
+  private int clientId_;
   /**
-   * <code>required int32 len = 1;</code>
-   * @return Whether the len field is set.
+   * <code>required int32 clientId = 1;</code>
+   * @return Whether the clientId field is set.
    */
   @java.lang.Override
-  public boolean hasLen() {
+  public boolean hasClientId() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>required int32 len = 1;</code>
-   * @return The len.
+   * <code>required int32 clientId = 1;</code>
+   * @return The clientId.
    */
   @java.lang.Override
-  public int getLen() {
-    return len_;
+  public int getClientId() {
+    return clientId_;
   }
 
-  public static final int ARRAY_FIELD_NUMBER = 2;
+  public static final int TASKID_FIELD_NUMBER = 2;
+  private int taskId_;
+  /**
+   * <code>required int32 taskId = 2;</code>
+   * @return Whether the taskId field is set.
+   */
+  @java.lang.Override
+  public boolean hasTaskId() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>required int32 taskId = 2;</code>
+   * @return The taskId.
+   */
+  @java.lang.Override
+  public int getTaskId() {
+    return taskId_;
+  }
+
+  public static final int ARRAY_FIELD_NUMBER = 3;
   private com.google.protobuf.Internal.IntList array_;
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>repeated int32 array = 3;</code>
    * @return A list containing the array.
    */
   @java.lang.Override
@@ -143,14 +167,14 @@ private static final long serialVersionUID = 0L;
     return array_;
   }
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>repeated int32 array = 3;</code>
    * @return The count of array.
    */
   public int getArrayCount() {
     return array_.size();
   }
   /**
-   * <code>repeated int32 array = 2;</code>
+   * <code>repeated int32 array = 3;</code>
    * @param index The index of the element to return.
    * @return The array at the given index.
    */
@@ -165,7 +189,11 @@ private static final long serialVersionUID = 0L;
     if (isInitialized == 1) return true;
     if (isInitialized == 0) return false;
 
-    if (!hasLen()) {
+    if (!hasClientId()) {
+      memoizedIsInitialized = 0;
+      return false;
+    }
+    if (!hasTaskId()) {
       memoizedIsInitialized = 0;
       return false;
     }
@@ -177,10 +205,13 @@ private static final long serialVersionUID = 0L;
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeInt32(1, len_);
+      output.writeInt32(1, clientId_);
+    }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      output.writeInt32(2, taskId_);
     }
     for (int i = 0; i < array_.size(); i++) {
-      output.writeInt32(2, array_.getInt(i));
+      output.writeInt32(3, array_.getInt(i));
     }
     unknownFields.writeTo(output);
   }
@@ -193,7 +224,11 @@ private static final long serialVersionUID = 0L;
     size = 0;
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(1, len_);
+        .computeInt32Size(1, clientId_);
+    }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(2, taskId_);
     }
     {
       int dataSize = 0;
@@ -219,10 +254,15 @@ private static final long serialVersionUID = 0L;
     }
     ru.hse.servers.protocol.message.Message other = (ru.hse.servers.protocol.message.Message) obj;
 
-    if (hasLen() != other.hasLen()) return false;
-    if (hasLen()) {
-      if (getLen()
-          != other.getLen()) return false;
+    if (hasClientId() != other.hasClientId()) return false;
+    if (hasClientId()) {
+      if (getClientId()
+          != other.getClientId()) return false;
+    }
+    if (hasTaskId() != other.hasTaskId()) return false;
+    if (hasTaskId()) {
+      if (getTaskId()
+          != other.getTaskId()) return false;
     }
     if (!getArrayList()
         .equals(other.getArrayList())) return false;
@@ -237,9 +277,13 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (hasLen()) {
-      hash = (37 * hash) + LEN_FIELD_NUMBER;
-      hash = (53 * hash) + getLen();
+    if (hasClientId()) {
+      hash = (37 * hash) + CLIENTID_FIELD_NUMBER;
+      hash = (53 * hash) + getClientId();
+    }
+    if (hasTaskId()) {
+      hash = (37 * hash) + TASKID_FIELD_NUMBER;
+      hash = (53 * hash) + getTaskId();
     }
     if (getArrayCount() > 0) {
       hash = (37 * hash) + ARRAY_FIELD_NUMBER;
@@ -378,10 +422,12 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public Builder clear() {
       super.clear();
-      len_ = 0;
+      clientId_ = 0;
       bitField0_ = (bitField0_ & ~0x00000001);
-      array_ = emptyIntList();
+      taskId_ = 0;
       bitField0_ = (bitField0_ & ~0x00000002);
+      array_ = emptyIntList();
+      bitField0_ = (bitField0_ & ~0x00000004);
       return this;
     }
 
@@ -411,12 +457,16 @@ private static final long serialVersionUID = 0L;
       int from_bitField0_ = bitField0_;
       int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.len_ = len_;
+        result.clientId_ = clientId_;
         to_bitField0_ |= 0x00000001;
       }
-      if (((bitField0_ & 0x00000002) != 0)) {
+      if (((from_bitField0_ & 0x00000002) != 0)) {
+        result.taskId_ = taskId_;
+        to_bitField0_ |= 0x00000002;
+      }
+      if (((bitField0_ & 0x00000004) != 0)) {
         array_.makeImmutable();
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000004);
       }
       result.array_ = array_;
       result.bitField0_ = to_bitField0_;
@@ -468,13 +518,16 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(ru.hse.servers.protocol.message.Message other) {
       if (other == ru.hse.servers.protocol.message.Message.getDefaultInstance()) return this;
-      if (other.hasLen()) {
-        setLen(other.getLen());
+      if (other.hasClientId()) {
+        setClientId(other.getClientId());
+      }
+      if (other.hasTaskId()) {
+        setTaskId(other.getTaskId());
       }
       if (!other.array_.isEmpty()) {
         if (array_.isEmpty()) {
           array_ = other.array_;
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000004);
         } else {
           ensureArrayIsMutable();
           array_.addAll(other.array_);
@@ -488,7 +541,10 @@ private static final long serialVersionUID = 0L;
 
     @java.lang.Override
     public final boolean isInitialized() {
-      if (!hasLen()) {
+      if (!hasClientId()) {
+        return false;
+      }
+      if (!hasTaskId()) {
         return false;
       }
       return true;
@@ -514,70 +570,109 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private int len_ ;
+    private int clientId_ ;
     /**
-     * <code>required int32 len = 1;</code>
-     * @return Whether the len field is set.
+     * <code>required int32 clientId = 1;</code>
+     * @return Whether the clientId field is set.
      */
     @java.lang.Override
-    public boolean hasLen() {
+    public boolean hasClientId() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>required int32 len = 1;</code>
-     * @return The len.
+     * <code>required int32 clientId = 1;</code>
+     * @return The clientId.
      */
     @java.lang.Override
-    public int getLen() {
-      return len_;
+    public int getClientId() {
+      return clientId_;
     }
     /**
-     * <code>required int32 len = 1;</code>
-     * @param value The len to set.
+     * <code>required int32 clientId = 1;</code>
+     * @param value The clientId to set.
      * @return This builder for chaining.
      */
-    public Builder setLen(int value) {
+    public Builder setClientId(int value) {
       bitField0_ |= 0x00000001;
-      len_ = value;
+      clientId_ = value;
       onChanged();
       return this;
     }
     /**
-     * <code>required int32 len = 1;</code>
+     * <code>required int32 clientId = 1;</code>
      * @return This builder for chaining.
      */
-    public Builder clearLen() {
+    public Builder clearClientId() {
       bitField0_ = (bitField0_ & ~0x00000001);
-      len_ = 0;
+      clientId_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private int taskId_ ;
+    /**
+     * <code>required int32 taskId = 2;</code>
+     * @return Whether the taskId field is set.
+     */
+    @java.lang.Override
+    public boolean hasTaskId() {
+      return ((bitField0_ & 0x00000002) != 0);
+    }
+    /**
+     * <code>required int32 taskId = 2;</code>
+     * @return The taskId.
+     */
+    @java.lang.Override
+    public int getTaskId() {
+      return taskId_;
+    }
+    /**
+     * <code>required int32 taskId = 2;</code>
+     * @param value The taskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTaskId(int value) {
+      bitField0_ |= 0x00000002;
+      taskId_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>required int32 taskId = 2;</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTaskId() {
+      bitField0_ = (bitField0_ & ~0x00000002);
+      taskId_ = 0;
       onChanged();
       return this;
     }
 
     private com.google.protobuf.Internal.IntList array_ = emptyIntList();
     private void ensureArrayIsMutable() {
-      if (!((bitField0_ & 0x00000002) != 0)) {
+      if (!((bitField0_ & 0x00000004) != 0)) {
         array_ = mutableCopy(array_);
-        bitField0_ |= 0x00000002;
+        bitField0_ |= 0x00000004;
        }
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @return A list containing the array.
      */
     public java.util.List<java.lang.Integer>
         getArrayList() {
-      return ((bitField0_ & 0x00000002) != 0) ?
+      return ((bitField0_ & 0x00000004) != 0) ?
                java.util.Collections.unmodifiableList(array_) : array_;
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @return The count of array.
      */
     public int getArrayCount() {
       return array_.size();
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @param index The index of the element to return.
      * @return The array at the given index.
      */
@@ -585,7 +680,7 @@ private static final long serialVersionUID = 0L;
       return array_.getInt(index);
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @param index The index to set the value at.
      * @param value The array to set.
      * @return This builder for chaining.
@@ -598,7 +693,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @param value The array to add.
      * @return This builder for chaining.
      */
@@ -609,7 +704,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @param values The array to add.
      * @return This builder for chaining.
      */
@@ -622,12 +717,12 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated int32 array = 2;</code>
+     * <code>repeated int32 array = 3;</code>
      * @return This builder for chaining.
      */
     public Builder clearArray() {
       array_ = emptyIntList();
-      bitField0_ = (bitField0_ & ~0x00000002);
+      bitField0_ = (bitField0_ & ~0x00000004);
       onChanged();
       return this;
     }

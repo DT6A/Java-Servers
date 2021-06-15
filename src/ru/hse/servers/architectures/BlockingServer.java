@@ -86,10 +86,11 @@ public class BlockingServer extends AbstractServer {
             outputStream = new DataOutputStream(socket.getOutputStream());
         }
 
-        private void sendData(List<Integer> data) {
+        private void sendData(int clientId, int taskId, List<Integer> data) {
             writer.submit(() -> {
                 try {
-                    Utils.writeMessage(outputStream, Message.newBuilder().setLen(data.size()).addAllArray(data).build());
+                    Utils.writeMessage(outputStream, Message.newBuilder()
+                            .setClientId(clientId).setTaskId(taskId).addAllArray(data).build());
                 } catch (SocketException ignore) {
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -104,12 +105,8 @@ public class BlockingServer extends AbstractServer {
                     //int clientId = inputStream.readInt();
                     //System.out.println("NQ " + numberOfQueries);
                     for (int i = 0; i < numberOfQueries; i++) {
-                        //System.out.println("Qnum " + i);
                         Message msg = Utils.readMessage(inputStream);
                         List<Integer> data = msg.getArrayList();
-                        if (config.arraysSize != data.size()) {
-                            throw new RuntimeException("Server got array of size " + msg.getLen() + " but expected " + config.arraysSize);
-                        }
                         //int finalI = i;
                         workers.submit(() -> {
                             //System.out.println("Client " + clientId + " started sorting");
@@ -118,7 +115,7 @@ public class BlockingServer extends AbstractServer {
                             long end = System.currentTimeMillis();
                             collector.putFromServer(end - start);
                             //System.out.println("Client " + clientId + " finished sorting");
-                            sendData(result);
+                            sendData(msg.getClientId(), msg.getTaskId(), result);
                             //System.out.println("Client " + clientId + " result sent");
                             //System.out.println("Wrote " + finalI);
                         });
