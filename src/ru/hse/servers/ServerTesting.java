@@ -228,9 +228,9 @@ public class ServerTesting implements Runnable {
 
     @Override
     public void run() {
-        //config = collectConfig();
-        config = new TestConfig(3000, 10, 50, 30, 1, 501, 50,
-                TestConfig.ArchitectureType.ASYNC, TestConfig.VaryingParameter.PAUSE);
+        config = collectConfig();
+        //config = new TestConfig(3000, 10, 50, 30, 1, 501, 50,
+          //      TestConfig.ArchitectureType.ASYNC, TestConfig.VaryingParameter.PAUSE);
         config.initStepping();
         ExecutorService serverThread = Executors.newSingleThreadExecutor();
         do {
