@@ -6,13 +6,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
     private final int id;
@@ -20,16 +19,15 @@ public class Client {
     private final CountDownLatch latch;
     private final CountDownLatch startLatch;
     private final Random random = new Random();
-    private final TimeCollector collector;
     private final ExecutorService writeThread = Executors.newSingleThreadExecutor();
     private final List<Task> tasks = new CopyOnWriteArrayList<>();
+    private List<Long> results = new ArrayList<>();
 
-    Client(int id, TestConfig config, CountDownLatch latch, CountDownLatch startLatch, TimeCollector collector) {
+    Client(int id, TestConfig config, CountDownLatch latch, CountDownLatch startLatch) {
         this.id = id;
         this.config = config;
         this.latch = latch;
         this.startLatch = startLatch;
-        this.collector = collector;
 
         for (int i = 0; i < config.numberOfQueriesFromEachClient; i++) {
             tasks.add(new Task(i));
@@ -49,7 +47,6 @@ public class Client {
     public void run() throws Exception {
         try (SocketChannel channel = SocketChannel.open(new InetSocketAddress(Constants.HOST_IP, Constants.PORT))) {
             channel.configureBlocking(true);
-            startLatch.countDown();
             startLatch.await();
             channel.write(ByteBuffer.allocate(4).putInt(config.numberOfQueriesFromEachClient).flip());
 
@@ -60,13 +57,13 @@ public class Client {
                     try {
                         Utils.writeMessageToChannel(channel, task.message);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                     if (i + 1 != config.numberOfQueriesFromEachClient) {
                         try {
                             Thread.sleep(config.pauseBetweenQueries);
-                        } catch (InterruptedException ignore) {
-                            ignore.printStackTrace();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         }
                     }
                 }
@@ -79,10 +76,8 @@ public class Client {
                 task.endTask();
                 checkResult(result.getArrayList());
             }
-        } catch (InterruptedException ignore) {
-            ignore.printStackTrace();
-        } finally {
-            collector.isAccepting = false;
+        }
+        finally {
             writeThread.shutdownNow();
             latch.countDown();
             System.out.println("Client " + id + " finished");
@@ -97,6 +92,14 @@ public class Client {
             if (result.get(i) > result.get(i + 1))
                 throw new RuntimeException("Got unsorted array");;
         }
+    }
+
+    public void stop() {
+        writeThread.shutdownNow();
+    }
+
+    public List<Long> getResults() {
+        return results;
     }
 
     private class Task {
@@ -116,7 +119,7 @@ public class Client {
 
         public void endTask() {
             end = System.currentTimeMillis();
-            collector.putFromClient(end - start);
+            results.add(end - start);
             System.out.println("Client " + id + " query finished in " + (end - start));
         }
     }

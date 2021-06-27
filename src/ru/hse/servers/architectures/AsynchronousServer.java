@@ -4,7 +4,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang.ArrayUtils;
 import ru.hse.servers.Constants;
 import ru.hse.servers.TestConfig;
-import ru.hse.servers.TimeCollector;
 import ru.hse.servers.protocol.message.Message;
 
 import java.io.IOException;
@@ -13,7 +12,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.Condition;
@@ -23,14 +26,15 @@ import static java.lang.Math.min;
 
 public class AsynchronousServer extends AbstractServer {
     private final TestConfig config;
-    private final TimeCollector collector;
     private volatile boolean isWorking = true;
     private final ReentrantLock waitLock = new ReentrantLock();
     private final Condition finishCondition = waitLock.newCondition();
+    private final List<Long> results = new ArrayList<>();
+    private final CountDownLatch startLatch;
 
-    public AsynchronousServer(TestConfig config, TimeCollector collector) {
+    public AsynchronousServer(TestConfig config, CountDownLatch startLatch) {
         this.config = config;
-        this.collector = collector;
+        this.startLatch = startLatch;
     }
 
     @Override
@@ -44,7 +48,7 @@ public class AsynchronousServer extends AbstractServer {
                     finishCondition.await();
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             } finally {
                 waitLock.unlock();
             }
@@ -55,12 +59,18 @@ public class AsynchronousServer extends AbstractServer {
     public void stop() throws IOException {
         try {
             waitLock.lock();
+            isStopped = true;
             isWorking = false;
             finishCondition.signal();
         } finally {
             waitLock.unlock();
             workers.shutdownNow();
         }
+    }
+
+    @Override
+    public double getMeanTime() {
+        return ((double) results.stream().reduce(0L, Long::sum)) / results.size();
     }
 
     private static class ClientHandler {
@@ -143,7 +153,7 @@ public class AsynchronousServer extends AbstractServer {
                 try {
                     channel.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException(e);
                 }
             }
         }
@@ -155,6 +165,7 @@ public class AsynchronousServer extends AbstractServer {
             if (attachment.isOpen()) {
                 attachment.accept(attachment, this);
                 ClientHandler clientContext = new ClientHandler(result);
+                startLatch.countDown();
                 result.read(clientContext.readBuffer, clientContext, new ReadHandler());
             }
             if (result != null && result.isOpen()) {
@@ -178,14 +189,16 @@ public class AsynchronousServer extends AbstractServer {
                     Future<?> future = workers.submit(() -> {attachment.result = processData(msg.getArrayList());});
                     future.get();
                     long end = System.currentTimeMillis();
-                    collector.putFromServer(end - start);
+                    if (!isStopped) {
+                        results.add(end - start);
+                    }
                     attachment.makeWriteBuffer();
                     attachment.resetRead();
                     if (attachment.channel.isOpen()) {
                         attachment.channel.write(attachment.writeBuffer, attachment, new WriteHandler());
                     }
                 } catch (InvalidProtocolBufferException | InterruptedException | ExecutionException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException(e);
                 }
             }
             else if (attachment.channel.isOpen()) {
@@ -194,8 +207,7 @@ public class AsynchronousServer extends AbstractServer {
         }
 
         @Override
-        public void failed(Throwable exc, ClientHandler attachment) {
-            exc.printStackTrace();
+        public void failed(Throwable ignore, ClientHandler attachment) {
         }
     }
 
@@ -216,8 +228,7 @@ public class AsynchronousServer extends AbstractServer {
         }
 
         @Override
-        public void failed(Throwable exc, ClientHandler attachment) {
-            exc.printStackTrace();
+        public void failed(Throwable ignore, ClientHandler attachment) {
         }
     }
 }

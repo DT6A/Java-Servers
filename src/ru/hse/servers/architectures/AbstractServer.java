@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public abstract class AbstractServer {
+    protected volatile boolean isStopped = false;
     protected final ExecutorService workers = Executors.newFixedThreadPool(Constants.WORKER_THREADS);
 
     public List<Integer> processData(List<Integer> data) {
@@ -30,4 +31,5 @@ public abstract class AbstractServer {
 
     public abstract void start() throws IOException;
     public abstract void stop() throws IOException;
+    public abstract double getMeanTime();
 }

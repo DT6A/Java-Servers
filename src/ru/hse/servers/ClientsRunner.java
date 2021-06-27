@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class ClientsRunner {
     private final TestConfig config;
@@ -12,22 +13,23 @@ public class ClientsRunner {
     private final ExecutorService pool = Executors.newCachedThreadPool();
     private final CountDownLatch latch;
     private final CountDownLatch startLatch;
-    private final TimeCollector collector;
 
-    ClientsRunner(TestConfig config, TimeCollector collector) {
+    ClientsRunner(TestConfig config, CountDownLatch startLatch) {
         this.config = config;
-        latch = new CountDownLatch(config.numberOfClients);
-        startLatch = new CountDownLatch(config.numberOfClients);
-        this.collector = collector;
+        this.startLatch = startLatch;
+        latch = new CountDownLatch(1);
     }
 
     public void stop() {
+        for (Client client : clientList) {
+            client.stop();
+        }
         pool.shutdownNow();
     }
 
     public void run() throws InterruptedException {
         for (int i = 0; i < config.numberOfClients; i++) {
-            clientList.add(new Client(i, config, latch, startLatch, collector));
+            clientList.add(new Client(i, config, latch, startLatch));
         }
 
         try {
@@ -36,7 +38,6 @@ public class ClientsRunner {
                     try {
                         client.run();
                     } catch (Exception e) {
-                        e.printStackTrace();
                         throw new RuntimeException(e);
                     }
                 });
@@ -46,5 +47,10 @@ public class ClientsRunner {
         finally {
             stop();
         }
+    }
+
+    public double getMeanTime() {
+        List<Long> results = clientList.stream().flatMap(c -> c.getResults().stream()).collect(Collectors.toList());
+        return ((double) results.stream().reduce(0L, Long::sum)) / results.size();
     }
 }

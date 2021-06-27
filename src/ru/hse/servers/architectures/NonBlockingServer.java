@@ -4,16 +4,16 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang.ArrayUtils;
 import ru.hse.servers.Constants;
 import ru.hse.servers.TestConfig;
-import ru.hse.servers.TimeCollector;
 import ru.hse.servers.protocol.message.Message;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.min;
@@ -31,11 +31,12 @@ public class NonBlockingServer extends AbstractServer {
     private final List<Integer> sentMsgs = new CopyOnWriteArrayList<>();
 
     private final TestConfig config;
-    private final TimeCollector collector;
 
-    public NonBlockingServer(TestConfig config, TimeCollector collector) {
+    private final CountDownLatch startLatch;
+
+    public NonBlockingServer(TestConfig config, CountDownLatch startLatch) {
         this.config = config;
-        this.collector = collector;
+        this.startLatch = startLatch;
     }
 
     @Override
@@ -82,7 +83,7 @@ public class NonBlockingServer extends AbstractServer {
                                    long start = System.currentTimeMillis();
                                    List<Integer> result = processData(receivedData);
                                    long end = System.currentTimeMillis();
-                                   collector.putFromServer(end - start);
+                                   handler.results.add(end - start);
                                    Message response = Message.newBuilder()
                                            .setTaskId(handler.taskId).setClientId(handler.userId).addAllArray(result).build();
                                    handler.messages.offer(response);
@@ -95,8 +96,7 @@ public class NonBlockingServer extends AbstractServer {
 
                            iterator.remove();
                        }
-                   } catch (IOException e) {
-                       e.printStackTrace();
+                   } catch (IOException ignore) {
                    }
                }
             });
@@ -141,7 +141,7 @@ public class NonBlockingServer extends AbstractServer {
                             iterator.remove();
                         }
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 }
             });
@@ -158,6 +158,7 @@ public class NonBlockingServer extends AbstractServer {
                 channel.configureBlocking(false);
                 ClientHandler handler = new ClientHandler(channel);
                 clients.add(handler);
+                startLatch.countDown();
                 readQueue.offer(handler);
                 readSelector.wakeup(); // vibe check
             }
@@ -177,6 +178,12 @@ public class NonBlockingServer extends AbstractServer {
         }
     }
 
+    @Override
+    public double getMeanTime() {
+        List<Long> results = clients.stream().flatMap(c -> c.results.stream()).collect(Collectors.toList());
+        return ((double) results.stream().reduce(0L, Long::sum)) / results.size();
+    }
+
     private static class ClientHandler {
         private volatile boolean everStarted = false;
         private final Queue<Message> messages = new ConcurrentLinkedQueue<>();
@@ -190,6 +197,7 @@ public class NonBlockingServer extends AbstractServer {
         public final SocketChannel channel;
         private volatile int userId;
         private volatile int taskId;
+        public final List<Long> results = new CopyOnWriteArrayList<>();
 
         private ClientHandler(SocketChannel channel) {
             this.channel = channel;

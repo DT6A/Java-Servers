@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -229,23 +229,23 @@ public class ServerTesting implements Runnable {
     @Override
     public void run() {
         config = collectConfig();
-        //config = new TestConfig(3000, 10, 50, 30, 1, 501, 50,
+        //config = new TestConfig(3000, 10, 50, 30, 1, 106, 5,
           //      TestConfig.ArchitectureType.ASYNC, TestConfig.VaryingParameter.PAUSE);
         config.initStepping();
         ExecutorService serverThread = Executors.newSingleThreadExecutor();
         do {
-            TimeCollector collector = new TimeCollector();
             System.out.println(config);
-            ClientsRunner clientsRunner = new ClientsRunner(config, collector);
+            CountDownLatch startLatch = new CountDownLatch(config.numberOfClients);
+            ClientsRunner clientsRunner = new ClientsRunner(config, startLatch);
             AbstractServer server = null;
             if (config.architectureType == TestConfig.ArchitectureType.BLOCKING) {
-                server = new BlockingServer(config, collector);
+                server = new BlockingServer(config, startLatch);
             }
             else if (config.architectureType == TestConfig.ArchitectureType.NON_BLOCKING) {
-                server = new NonBlockingServer(config, collector);
+                server = new NonBlockingServer(config, startLatch);
             }
             else {
-                server = new AsynchronousServer(config, collector);
+                server = new AsynchronousServer(config, startLatch);
             }
             Future<?> serverFuture = null;
             try {
@@ -255,22 +255,20 @@ public class ServerTesting implements Runnable {
                     try {
                         finalServer.start();
                     } catch (IOException e) {
-                        e.printStackTrace();
                         throw new RuntimeException(e);
                     }
                 });
                 Thread.sleep(100);
                 clientsRunner.run();
-            } catch (InterruptedException ignored) {
-                ignored.printStackTrace();
+            } catch (Exception ignored) {
+                //ignored.printStackTrace();
             } finally {
                 try {
                     server.stop();
                     serverFuture.cancel(true);
-                    resultsClient.add(new CSVNote(config, collector.getClientMeanTime()));
-                    resultsServer.add(new CSVNote(config, collector.getServerMeanTime()));
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    resultsClient.add(new CSVNote(config, clientsRunner.getMeanTime()));
+                    resultsServer.add(new CSVNote(config, server.getMeanTime()));
+                } catch (Exception ignore) {
                 }
             }
         } while (config.step());
