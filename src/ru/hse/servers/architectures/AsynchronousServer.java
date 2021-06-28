@@ -16,6 +16,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -74,6 +75,8 @@ public class AsynchronousServer extends AbstractServer {
     }
 
     private static class ClientHandler {
+        public Queue<ByteBuffer> bufferQueue = new ConcurrentLinkedQueue<>();
+        public volatile boolean isWriting = false;
         private int messageLen;
         private int numberOfTasks;
         private int tasksCompleted;
@@ -139,6 +142,7 @@ public class AsynchronousServer extends AbstractServer {
             writeBuffer.putInt(response.length);
             writeBuffer.put(response);
             writeBuffer.flip();
+            bufferQueue.offer(writeBuffer);
         }
 
         public void resetRead() {
@@ -147,7 +151,6 @@ public class AsynchronousServer extends AbstractServer {
         }
 
         public void resetWrite() {
-            result = null;
             tasksCompleted++;
             if (tasksCompleted == numberOfTasks) {
                 try {
@@ -194,15 +197,16 @@ public class AsynchronousServer extends AbstractServer {
                     }
                     attachment.makeWriteBuffer();
                     attachment.resetRead();
-                    if (attachment.channel.isOpen()) {
-                        attachment.channel.write(attachment.writeBuffer, attachment, new WriteHandler());
+                    if (attachment.channel.isOpen() && !attachment.isWriting) {
+                        attachment.isWriting = true;
+                        attachment.channel.write(attachment.bufferQueue.peek(), attachment, new WriteHandler());
                     }
                 } catch (InvalidProtocolBufferException | InterruptedException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }
             }
-            else if (attachment.channel.isOpen()) {
-                attachment.channel.read(attachment.readBuffer, attachment, this);
+            if (attachment.channel.isOpen()) {
+            attachment.channel.read(attachment.readBuffer, attachment, this);
             }
         }
 
@@ -214,15 +218,21 @@ public class AsynchronousServer extends AbstractServer {
     private class WriteHandler implements CompletionHandler<Integer, ClientHandler> {
         @Override
         public void completed(Integer result, ClientHandler attachment) {
-            if (attachment.writeBuffer.hasRemaining()) {
+            if (attachment.bufferQueue.peek().hasRemaining()) {
                 if (attachment.channel.isOpen()) {
-                    attachment.channel.write(attachment.writeBuffer, attachment, this);
+                    attachment.channel.write(attachment.bufferQueue.peek(), attachment, this);
                 }
             }
             else if (attachment.channel.isOpen()) {
                 attachment.resetWrite();
+                attachment.bufferQueue.poll();
                 if (attachment.channel.isOpen()) {
-                    attachment.channel.read(attachment.readBuffer, attachment, new ReadHandler());
+                    if (attachment.bufferQueue.size() == 0) {
+                        attachment.isWriting = false;
+                    }
+                    else {
+                        attachment.channel.write(attachment.bufferQueue.peek(), attachment, this);
+                    }
                 }
             }
         }

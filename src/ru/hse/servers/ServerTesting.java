@@ -230,7 +230,7 @@ public class ServerTesting implements Runnable {
     public void run() {
         config = collectConfig();
         //config = new TestConfig(3000, 10, 50, 30, 1, 106, 5,
-          //      TestConfig.ArchitectureType.ASYNC, TestConfig.VaryingParameter.PAUSE);
+                //TestConfig.ArchitectureType.ASYNC, TestConfig.VaryingParameter.PAUSE);
         config.initStepping();
         ExecutorService serverThread = Executors.newSingleThreadExecutor();
         do {
